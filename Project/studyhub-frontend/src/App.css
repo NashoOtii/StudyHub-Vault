@@ -1,0 +1,403 @@
+/* =========================================
+   1. THEME VARIABLES 
+   ========================================= */
+:root {
+  /* Light Mode */
+  --bg-main: #f0f4f8;       /* Light Blue-Grey Background */
+  --bg-card: #ffffff;       /* White Cards */
+  --bg-sidebar: #ffffff;    /* White Sidebar */
+  --text-main: #1e293b;     /* Slate 800 */
+  --text-muted: #64748b;    /* Slate 500 */
+  --border-color: #e2e8f0;  /* Light Border */
+  --accent-blue: #3b82f6;   /* Bright Blue */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.dark-theme {
+  /* Dark Mode (Deep Navy Palette) */
+  --bg-main: #0f172a;       /* Darkest Navy */
+  --bg-card: #1e293b;       /* Slate 800 */
+  --bg-sidebar: #020617;    /* Near Black Sidebar */
+  --text-main: #f8fafc;     /* White/Grey text */
+  --text-muted: #94a3b8;    /* Muted Blue-Grey */
+  --border-color: #334155;  /* Dark Borders */
+  --shadow-sm: none;
+  --shadow-md: none;
+}
+
+/* =========================================
+   2. GLOBAL RESET
+   ========================================= */
+* {
+  box-sizing: border-box; /* Crucial for padding/width calculations */
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* =========================================
+   3. DASHBOARD GRID LAYOUT
+   ========================================= */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 350px; /* Fluid Content | Fixed Sidebar */
+  min-height: 100vh;
+  width: 100%;
+  background-color: var(--bg-main);
+}
+
+/* --- Left Content Area --- */
+.vault-content {
+  padding: 40px;
+  overflow-y: auto;
+  height: 100vh; /* Independent scrolling */
+}
+
+/* --- Right Sticky Sidebar --- */
+.sidebar-right {
+  background-color: var(--bg-sidebar);
+  border-left: 1px solid var(--border-color);
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto; /* Scroll sidebar if content is too long */
+}
+
+/* =========================================
+   4. COMPONENT STYLES
+   ========================================= */
+
+/* --- Cards (Upload & Files) --- */
+.vault-card, .file-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 24px;
+}
+
+.vault-card { padding: 25px; }
+.file-card { padding: 15px; display: flex; align-items: center; }
+
+/* --- Tabs --- */
+.course-tabs {
+  display: flex;
+  gap: 10px;
+  margin: 20px 0;
+  flex-wrap: wrap;
+}
+
+.tab-btn {
+  padding: 8px 16px;
+  border: 2px solid transparent; /* Prepare for border color */
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: 600;
+  background: transparent;
+  color: var(--text-muted);
+  transition: all 0.2s;
+}
+
+.tab-btn.active {
+  color: white;
+  /* Background color is handled inline in JSX, but this ensures text pops */
+}
+
+/* --- Inputs & Search --- */
+input[type="text"], 
+input[type="password"], 
+input[type="email"],
+.search-bar {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background-color: var(--bg-main); /* Slight contrast from card */
+  color: var(--text-main);
+  font-size: 1rem;
+  outline: none;
+}
+
+input:focus, .search-bar:focus {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+/* --- Buttons --- */
+.action-btn {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+  color: white;
+  transition: filter 0.2s;
+}
+.action-btn:hover { filter: brightness(1.1); }
+.select-btn { background-color: var(--text-muted); }
+.upload-btn { background-color: #10b981; }
+
+.file-icon {
+  background: #e0e7ff;
+  color: #3730a3;
+  padding: 12px;
+  border-radius: 8px;
+  font-weight: bold;
+  margin-right: 15px;
+}
+
+/* =========================================
+   5. SIDEBAR SECTIONS
+   ========================================= */
+
+/* Section A: Profile (Top) */
+.section-a {
+  padding: 30px 20px;
+  border-bottom: 1px solid var(--border-color);
+  text-align: center;
+}
+
+.avatar-circle {
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  margin: 0 auto 15px;
+  display: flex; align-items: center; justify-content: center;
+  color: white; 
+  font-size: 2rem;
+  font-weight: bold;
+}
+
+.sidebar-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.sidebar-btn {
+  width: 100%;
+  padding: 10px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-main);
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.sidebar-btn:hover {
+  background-color: var(--bg-main);
+}
+
+/* Section B: AI & Middle (Flexible Space) */
+.section-b {
+  flex-grow: 1; /* Pushes Support to bottom */
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.ai-card {
+  border: 1px dashed var(--border-color);
+  padding: 20px;
+  border-radius: 12px;
+  width: 100%;
+}
+
+/* Section Support: Bottom */
+.section-support {
+  padding: 20px;
+  border-top: 1px solid var(--border-color);
+  background-color: var(--bg-sidebar); /* Matches sidebar */
+}
+
+.contact-links {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.contact-btn {
+  display: block;
+  padding: 12px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: bold;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.contact-btn.whatsapp { background-color: #25D366; color: white; }
+.contact-btn.email { border: 1px solid var(--border-color); color: var(--text-main); }
+
+/* =========================================
+   6. AUTH PAGES (Login/Register) 
+   ========================================= */
+.auth-container {
+  display: flex;
+  justify-content: center;
+  /* align-items: center;  <-- This can sometimes hide the top of forms if they are too long */
+  align-items: flex-start; /* Start at the top so users can scroll down naturally */
+  min-height: 100vh;
+  width: 100%;
+  background-color: var(--bg-main);
+  /* Added significant vertical padding to ensure the bottom links are reachable */
+  padding: 60px 20px; 
+  box-sizing: border-box;
+  overflow-y: auto; /* Ensures vertical scrolling is enabled */
+}
+
+.auth-form {
+  background-color: var(--bg-card);
+  padding: 40px;
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
+  width: 100%;
+  max-width: 450px; /* Slightly wider to accommodate longer labels */
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  /* Ensure the form doesn't get cut off on tiny screens */
+  margin-bottom: 20px; 
+}
+
+.auth-form h2 {
+  margin: 0 0 10px 0;
+  text-align: center;
+  color: var(--text-main);
+  font-size: 1.8rem;
+}
+
+/* Label and Input Alignment */
+.auth-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+}
+
+.auth-form label {
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.auth-form input, 
+.auth-form select {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 1rem;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  transition: border-color 0.2s;
+}
+
+.auth-form input:focus {
+  border-color: var(--accent-blue);
+  outline: none;
+}
+
+/* Button & Redirect Link */
+.auth-btn {
+  background-color: var(--accent-blue);
+  color: white;
+  border: none;
+  padding: 16px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 1.1rem;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 10px;
+  transition: opacity 0.2s;
+}
+
+.auth-btn:hover {
+  opacity: 0.9;
+}
+
+.auth-redirect {
+  text-align: center;
+  margin-top: 15px;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+.auth-redirect a {
+  color: var(--accent-blue);
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.auth-redirect a:hover {
+  text-decoration: underline;
+}
+
+/* =========================================
+   7. MOBILE RESPONSIVENESS
+   ========================================= */
+@media (max-width: 768px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr; /* Single column */
+    display: block; /* Simplifies layout on mobile */
+  }
+
+  .vault-content {
+    padding: 20px;
+    height: auto;
+    padding-bottom: 80px; /* Space for fixed nav if needed */
+  }
+
+  .sidebar-right {
+    position: relative; /* No longer sticky */
+    height: auto;
+    border-left: none;
+    border-top: 1px solid var(--border-color);
+  }
+  
+  /* Optional: Hide specific sidebar sections on mobile if too cluttered */
+  .section-b { display: none; }
+}
+
+/* Utility to ensure text visibility in dark mode */
+.dark-theme h1, .dark-theme h2, .dark-theme h3, .dark-theme h4, .dark-theme p, .dark-theme span {
+  color: var(--text-main);
+}
+
+/* Specific styling for the Sign Out button */
+.sidebar-btn.signout-btn {
+  color: #ef4444; /* Default text red */
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+/* Hover: White text on Red background */
+.sidebar-btn.signout-btn:hover {
+  background-color: #ef4444 !important;
+  color: white !important;
+  border-color: #ef4444 !important;
+}
+
+/* Active/Click: Slightly darker red */
+.sidebar-btn.signout-btn:active {
+  background-color: #dc2626 !important;
+  transform: scale(0.98); /* Subtle "pressed" effect */
+}
