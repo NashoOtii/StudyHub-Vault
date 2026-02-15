@@ -214,6 +214,15 @@ input:focus, .search-bar:focus {
   color: var(--text-muted);
 }
 
+.delete-btn {
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.delete-btn:hover {
+  transform: scale(1.2);
+  color: #ff0000 !important;
+}
+
 .ai-card {
   border: 1px dashed var(--border-color);
   padding: 20px;

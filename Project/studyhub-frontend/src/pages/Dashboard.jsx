@@ -1,5 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+// --- 1. FIREBASE IMPORTS ---
+import { db } from '../firebase'; 
+import { collection, addDoc, query, where, onSnapshot, orderBy, doc, deleteDoc } from 'firebase/firestore';
 
 // --- CONSTANTS ---
 const FACULTY_COURSES = {
@@ -34,19 +37,41 @@ export default function Dashboard({ setUser: setGlobalUser }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [fileTitle, setFileTitle] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
   
-  // 3. "Database" State (The list of all uploaded files)
-  const [allFiles, setAllFiles] = useState(() => {
-    const savedFiles = localStorage.getItem('vault_files');
-    return savedFiles ? JSON.parse(savedFiles) : [];
-  });
+  // 3. Real Database State
+  const [allFiles, setAllFiles] = useState([]);
 
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
   const shades = ["#3949ab", "#3f51b5", "#5c6bc0", "#7986cb"];
 
-  // --- ACTIONS ---
+  // --- REAL-TIME DATA FETCHING ---
+  useEffect(() => {
+    const q = query(
+      collection(db, "materials"),
+      where("school", "==", user.schoolName),
+      orderBy("createdAt", "desc")
+    );
 
+    const unsubscribe = onSnapshot(q, 
+      (snapshot) => {
+        const filesData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setAllFiles(filesData);
+      },
+      (error) => {
+        console.error("Firestore Error:", error.message);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [user.schoolName]);
+
+
+  // --- ACTIONS ---
   const handleLogout = () => {
     localStorage.removeItem('user');
     if (setGlobalUser) setGlobalUser(null);
@@ -59,36 +84,72 @@ export default function Dashboard({ setUser: setGlobalUser }) {
     }
   };
 
-  const handleUpload = () => {
-    if (!fileTitle || !selectedFile) {
-      alert("Please enter a title and select a file!");
-      return;
+  // --- NEW DELETE FUNCTION ---
+  const handleDelete = async (fileId) => {
+    if (!window.confirm("Are you sure you want to delete this material?")) return;
+
+    try {
+      // Deletes the record from Firestore
+      // Note: This does not delete the actual file from Cloudinary (requires backend code),
+      // but removes the link from the app so no one can see it.
+      await deleteDoc(doc(db, "materials", fileId));
+      alert("Material deleted successfully!");
+    } catch (error) {
+      console.error("Error deleting document: ", error);
+      alert("Failed to delete material.");
     }
+  };
 
-    const newFile = {
-      id: Date.now(), // Unique ID
-      title: fileTitle,
-      fileName: selectedFile.name,
-      course: activeTab,
-      school: user.schoolName,
-      uploader: user.name,
-      date: new Date().toLocaleDateString(),
-      type: selectedFile.name.split('.').pop().toUpperCase() // e.g., PDF, DOCX
-    };
+  const handleUpload = async () => {
+    if (!fileTitle || !selectedFile) return alert("Please add a title and a file!");
+    setIsUploading(true);
 
-    const updatedFiles = [newFile, ...allFiles];
-    setAllFiles(updatedFiles);
-    localStorage.setItem('vault_files', JSON.stringify(updatedFiles));
-    
-    // Reset Form
-    setFileTitle("");
-    setSelectedFile(null);
-    alert("Upload Successful!");
+    const CLOUD_NAME = "depq9kljq"; 
+    const UPLOAD_PRESET = "StudyMaterials"; 
+
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+    formData.append("upload_preset", UPLOAD_PRESET);
+
+    try {
+      // 1. UPLOAD TO CLOUDINARY
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`,
+        { method: "POST", body: formData }
+      );
+
+      if (!response.ok) throw new Error("Cloudinary upload failed");
+
+      const data = await response.json();
+      
+      const fileUrl = data.secure_url.replace('/image/upload/', '/raw/upload/'); 
+
+      // 2. SAVE TO FIREBASE
+      await addDoc(collection(db, "materials"), {
+        title: fileTitle,
+        fileURL: fileUrl, 
+        course: activeTab,
+        school: user?.schoolName || "Unknown School",
+        uploader: user?.name || "Anonymous",
+        createdAt: new Date(),
+        date: new Date().toLocaleDateString(),
+        type: selectedFile.name.split('.').pop().toUpperCase()
+      });
+
+      setFileTitle("");
+      setSelectedFile(null);
+      alert("Upload Successful!");
+
+    } catch (err) {
+      console.error("Upload Error:", err);
+      alert("Upload failed. Please try again.");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   // --- FILTERING LOGIC ---
   const filteredFiles = allFiles.filter(file => 
-    file.school === user.schoolName && 
     file.course === activeTab &&
     file.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -97,14 +158,11 @@ export default function Dashboard({ setUser: setGlobalUser }) {
     <div className={`dashboard-grid ${darkMode ? 'dark-theme' : ''}`}>
       <main className="vault-content">
         
-        {/* HEADER */}
         <header className="community-header">
           <h1 style={{ color: 'var(--text-main)' }}>{user.schoolName} Vault</h1>
-          {/* FIX: Changed text to Welcome */}
-          <p style={{ color: 'var(--text-muted)' }}>Welcome, {user.name}</p>
+          <p style={{ color: 'var(--text-muted)' }}>Welcome, {user.name} </p>
         </header>
 
-        {/* COURSE TABS */}
         <nav className="course-tabs">
           {FACULTY_COURSES[user.schoolName]?.map((course, index) => (
             <button 
@@ -122,7 +180,6 @@ export default function Dashboard({ setUser: setGlobalUser }) {
           ))}
         </nav>
 
-        {/* UPLOAD & SEARCH SECTION */}
         <div className="vault-card upload-section">
           <h3>Contribute to {activeTab}</h3>
           
@@ -152,13 +209,13 @@ export default function Dashboard({ setUser: setGlobalUser }) {
             <button 
               onClick={handleUpload} 
               className="action-btn upload-btn"
+              disabled={isUploading}
             >
-              Upload
+              {isUploading ? "Uploading..." : "Upload"}
             </button>
           </div>
         </div>
 
-        {/* MATERIAL LIST / SEARCH RESULTS */}
         <div className="materials-container">
           <div className="search-bar-container">
             <input 
@@ -179,12 +236,38 @@ export default function Dashboard({ setUser: setGlobalUser }) {
                     <h4>{file.title}</h4>
                     <p className="meta">By {file.uploader} • {file.date}</p>
                   </div>
-                  <button className="download-btn">⬇</button>
+                  
+                  {/* --- UPDATED FILE ACTIONS SECTION --- */}
+                  <div className="file-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <a href={file.fileURL} target="_blank" rel="noreferrer" className="download-btn" style={{textDecoration:'none', display:'flex', alignItems:'center', justifyContent:'center'}}>
+                      ⬇
+                    </a>
+
+                    {/* Show delete button only if current user matches uploader */}
+                    {user.name === file.uploader && (
+                      <button 
+                        onClick={() => handleDelete(file.id)} 
+                        className="delete-btn"
+                        title="Delete Material"
+                        style={{ 
+                          background: 'none', 
+                          border: 'none', 
+                          color: '#ff4d4d', 
+                          cursor: 'pointer', 
+                          fontSize: '1.2rem',
+                          padding: '0 5px'
+                        }}
+                      >
+                        🗑️
+                      </button>
+                    )}
+                  </div>
+                  {/* --- END UPDATED SECTION --- */}
+
                 </div>
               ))}
             </div>
           ) : (
-            // EMPTY STATE / AI REFERRAL
             <div className="empty-state">
               <p className="empty-icon">📂</p>
               <h3>No materials found for "{searchQuery || activeTab}"</h3>
@@ -192,7 +275,6 @@ export default function Dashboard({ setUser: setGlobalUser }) {
               
               <div className="ai-referral">
                 <p>Need help right now?</p>
-                {/* FIX: Simplified button text */}
                 <button className="ai-btn" onClick={() => alert("AI Feature Opening Soon!")}>
                    🤖 Ask AI
                 </button>
@@ -202,33 +284,25 @@ export default function Dashboard({ setUser: setGlobalUser }) {
         </div>
       </main>
 
-      {/* SIDEBAR */}
       <aside className="sidebar-right">
-        {/* Profile Section */}
         <section className="section-a">
-          {/* FIX: Avatar styling is handled in CSS to ensure visibility */}
           <div className="avatar-circle" style={{backgroundColor: shades[0]}}>
-            {user.name ? user.name.charAt(0) : 'U'}
+            {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
           </div>
           <h3>{user.name}</h3>
           <p className="user-meta">Year {user.year} Student</p>
           
-          {/* FIX: Layout fixed in CSS using flex-column and gap */}
           <div className="sidebar-controls">
             <button className="sidebar-btn" onClick={() => setDarkMode(!darkMode)}>
               {darkMode ? "☀️ Light Mode" : "🌙 Dark Mode"}
             </button>
 
-            {/*added this to fix the logout button visibility issue, also added a red color scheme to make it more distinct and recognizable as a critical action,handle all show no go*/}
-         <button className="sidebar-btn signout-btn" onClick={handleLogout}>
-  Sign Out
-</button>
-
-          
+            <button className="sidebar-btn signout-btn" onClick={handleLogout} style={{color:'red', borderColor:'red'}}>
+              Sign Out
+            </button>
           </div>
         </section>
 
-        {/* AI Placeholder */}
         <section className="section-b">
           <div className="ai-card">
              <p style={{ fontSize: '2rem' }}>🤖</p>
@@ -237,22 +311,15 @@ export default function Dashboard({ setUser: setGlobalUser }) {
           </div>
         </section>
 
-        {/* CONTACT / SUPPORT SECTION */}
         <section className="section-support">
            <h4>Need Help?</h4>
-           <p style={{fontSize: '0.85rem', color: 'var(--text-muted)'}}>Have a suggestion or facing an issue?</p>
-           
            <div className="contact-links">
              <a href="https://wa.me/254745987455" target="_blank" rel="noreferrer" className="contact-btn whatsapp">
                WhatsApp Support
              </a>
-             {/* FIX: Kept as mailto, logic relies on system mail app */}
-             <a 
-           href="mailto: otenyonashon@gmail.com" 
-           className="contact-btn email"
-   >
-          Email Support
-      </a>
+             <a href="mailto:otenyonashon@gmail.com" className="contact-btn email">
+               Email Support
+             </a>
            </div>
         </section>
       </aside>
